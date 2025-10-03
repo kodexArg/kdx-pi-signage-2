@@ -185,6 +185,89 @@ class VLCPlayer:
         self.player = self.instance.media_player_new()
 ```
 
+## Configuración de VLC
+
+### Plataformas Soportadas
+
+#### Windows
+- **Instalación recomendada**: VLC oficial desde videolan.org
+- **Ruta típica**: `C:\Program Files\VideoLAN\VLC`
+- **Configuración**: Requiere ajuste manual de rutas en desarrollo
+- **Producción**: Funciona sin configuración adicional si VLC está instalado
+
+```bash
+# Instalación en Windows
+winget install VideoLAN.VLC
+# o descarga manual desde https://www.videolan.org
+```
+
+#### Linux (Raspberry Pi)
+- **Instalación recomendada**: Paquetes oficiales del sistema
+- **Ruta típica**: `/usr/lib/x86_64-linux-gnu/vlc` (Ubuntu/Debian)
+- **Producción**: Instalación estándar vía apt, funciona inmediatamente
+
+```bash
+# Instalación en Raspberry Pi (Debian/Ubuntu)
+sudo apt update
+sudo apt install vlc
+
+# Verificación de instalación
+vlc --version
+```
+
+### Variables de Entorno VLC
+
+```toml
+# pyproject.toml - Variables de entorno para VLC
+[tool.kdx_pi_signage]
+VLC_DIR = "C:/Program Files/VideoLAN/VLC"  # Windows
+# VLC_DIR = "/usr/lib/x86_64-linux-gnu/vlc"  # Linux
+VLC_VERBOSE_LEVEL = "0"
+```
+
+### Configuración Automática por Plataforma
+
+El sistema detecta automáticamente la plataforma y configura las rutas de VLC:
+
+- **Windows**: Busca VLC en rutas estándar del sistema
+- **Linux**: Usa rutas estándar de distribución
+- **Fallback**: Variable de entorno VLC_DIR si está configurada
+
+### Solución de Problemas VLC
+
+#### Windows
+1. **Error de DLL no encontrada**:
+   ```bash
+   # Agregar VLC al PATH
+   set PATH=%PATH%;C:\Program Files\VideoLAN\VLC
+
+   # O configurar variable de entorno
+   set VLC_PLUGIN_PATH=C:\Program Files\VideoLAN\VLC\plugins
+   ```
+
+2. **Problemas de permisos**:
+   - Ejecutar como administrador si es necesario
+   - Verificar instalación completa de VLC
+
+#### Linux
+1. **Plugins no encontrados**:
+   ```bash
+   # Verificar instalación de plugins
+   sudo apt install vlc-plugin-*
+
+   # Configurar manualmente si es necesario
+   export VLC_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/vlc/plugins
+   ```
+
+2. **Permisos de video**:
+   ```bash
+   # Agregar usuario al grupo video
+   sudo usermod -a -G video $USER
+
+   # Configurar permisos de framebuffer
+   sudo chmod 666 /dev/fb0
+   ```
+
 ## Manejo de Errores
 
 ### Categorías de Error
@@ -192,6 +275,7 @@ class VLCPlayer:
 2. **FileError**: Errores de archivo o permisos
 3. **PlaybackError**: Errores durante reproducción
 4. **ConfigurationError**: Problemas de configuración
+5. **VLCError**: Errores específicos del reproductor VLC
 
 ### Estrategia de Recuperación
 - **Reintentos exponenciales** para errores temporales

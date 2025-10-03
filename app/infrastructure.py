@@ -13,50 +13,87 @@ import platform
 import sys
 from pathlib import Path
 
-# Cross-platform VLC library path configuration
-def _configure_vlc_paths():
-    """Configure VLC library and plugin paths for cross-platform compatibility."""
-    current_dir = Path(__file__).parent.parent  # Project root directory
-    lib_dir = current_dir / "lib"
+def _get_vlc_paths():
+    """Get VLC installation paths based on platform and environment configuration."""
+    system = platform.system().lower()
 
+    # First priority: Environment variable VLC_DIR (from pyproject.toml via uv)
+    vlc_dir = os.environ.get('VLC_DIR')
+
+    if vlc_dir and os.path.exists(vlc_dir):
+        return {
+            'base_dir': vlc_dir,
+            'plugins_dir': os.path.join(vlc_dir, 'plugins'),
+            'source': 'environment'
+        }
+
+    # Second priority: Platform-specific default paths
+    if system == "windows":
+        # Common Windows VLC installation paths
+        common_paths = [
+            r"C:\Program Files\VideoLAN\VLC",
+            r"C:\Program Files (x86)\VideoLAN\VLC",
+            r"C:\Users\Kodex\scoop\apps\vlc\current",  # Scoop installation
+        ]
+
+        for path in common_paths:
+            if os.path.exists(path):
+                return {
+                    'base_dir': path,
+                    'plugins_dir': os.path.join(path, 'plugins'),
+                    'source': 'windows_default'
+                }
+
+    elif system == "linux":
+        # Common Linux VLC installation paths
+        common_paths = [
+            "/usr/lib/x86_64-linux-gnu/vlc",  # Ubuntu/Debian standard
+            "/usr/lib/vlc",                   # Alternative path
+            "/usr/local/lib/vlc",             # Local installation
+        ]
+
+        for path in common_paths:
+            if os.path.exists(path):
+                return {
+                    'base_dir': path,
+                    'plugins_dir': os.path.join(path, 'plugins'),
+                    'source': 'linux_default'
+                }
+
+    # If no valid path found, return None
+    return None
+
+def _configure_vlc_paths():
+    """Configure VLC paths for cross-platform compatibility."""
+    vlc_paths = _get_vlc_paths()
+
+    if not vlc_paths:
+        print("Warning: No valid VLC installation found")
+        return
+
+    base_dir = vlc_paths['base_dir']
+    plugins_dir = vlc_paths['plugins_dir']
+    source = vlc_paths['source']
+
+    print(f"Using VLC from {source}: {base_dir}")
+
+    # Set environment variables for VLC
+    if os.path.exists(plugins_dir):
+        os.environ['VLC_PLUGIN_PATH'] = plugins_dir
+        print(f"VLC plugins path: {plugins_dir}")
+    else:
+        print(f"Warning: VLC plugins directory not found: {plugins_dir}")
+
+    # Platform-specific path configuration
     system = platform.system().lower()
 
     if system == "windows":
-        # On Windows, use bundled VLC libraries
-        vlc_dll_path = lib_dir / "libvlc.dll"
-        vlc_core_dll_path = lib_dir / "libvlccore.dll"
-        vlc_plugins_path = lib_dir / "vlc-plugins"
-
-        if vlc_dll_path.exists() and vlc_core_dll_path.exists() and vlc_plugins_path.exists():
-            # Set paths for bundled VLC libraries
-            os.environ['VLC_PLUGIN_PATH'] = str(vlc_plugins_path)
-            # Add lib directory to PATH for DLL loading
-            os.environ['PATH'] = str(lib_dir) + os.pathsep + os.environ.get('PATH', '')
-        else:
-            # Fall back to system VLC installation
-            print("Warning: Bundled VLC libraries not found, falling back to system VLC")
+        # Add VLC directory to PATH for DLL loading
+        os.environ['PATH'] = base_dir + os.pathsep + os.environ.get('PATH', '')
 
     elif system == "linux":
-        # On Linux (Raspberry Pi), try to use system VLC first
-        try:
-            # Check if VLC is available in system PATH
-            import subprocess
-            result = subprocess.run(['which', 'vlc'], capture_output=True, text=True)
-            if result.returncode == 0:
-                # System VLC is available, let it use system paths
-                return
-        except:
-            pass
-
-        # If system VLC not available, try bundled approach (for development)
-        vlc_plugins_path = lib_dir / "vlc-plugins"
-        if vlc_plugins_path.exists():
-            os.environ['VLC_PLUGIN_PATH'] = str(vlc_plugins_path)
-            os.environ['LD_LIBRARY_PATH'] = str(lib_dir) + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
-
-    else:
-        # For other platforms (macOS, etc.), try system paths first
-        pass
+        # Add to LD_LIBRARY_PATH for Linux
+        os.environ['LD_LIBRARY_PATH'] = base_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
 
 # Configure VLC paths before importing
 _configure_vlc_paths()
@@ -309,11 +346,22 @@ class VLCPlayer(VideoPlayer):
             if self.player:
                 state = self.player.get_state()
                 # VLC states: NothingSpecial=0, Opening=1, Buffering=2, Playing=3, Paused=4, Stopped=5, Ended=6, Error=7
+                # Return True only for actively playing states, False for ended/stopped/error
                 return state in [1, 2, 3]  # Opening, Buffering, or Playing
             return False
         except Exception as e:
             self.logger.error(f"Error checking playback state: {e}")
             return False
+
+    def get_state(self) -> int:
+        """Get the current VLC player state."""
+        try:
+            if self.player:
+                return self.player.get_state()
+            return 0  # NothingSpecial
+        except Exception as e:
+            self.logger.error(f"Error getting player state: {e}")
+            return 0
 
     def get_position(self) -> float:
         """Get current playback position (0.0 to 1.0)."""

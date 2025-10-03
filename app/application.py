@@ -90,15 +90,38 @@ class PlaybackService:
                 video = self.playlist.get_next_video()
                 if video and video.is_valid():
                     self.logger.info(f"Playing video: {video.name}")
-                    self.video_player.play(str(video.path))
+                    success = self.video_player.play(str(video.path))
+
+                    if not success:
+                        self.logger.error(f"Failed to start video: {video.name}")
+                        time.sleep(1)
+                        continue
 
                     # Wait for video to complete or check periodically
-                    while (
-                        self._running
-                        and self.video_player.is_playing()
-                        and video.is_valid()
-                    ):
-                        time.sleep(1)
+                    video_start_time = time.time()
+                    max_wait_time = 300  # 5 minutes max wait time as safety net
+
+                    while self._running and video.is_valid():
+                        state = self.video_player.get_state()
+
+                        # Check VLC states: 0=NothingSpecial, 1=Opening, 2=Buffering, 3=Playing, 4=Paused, 5=Stopped, 6=Ended, 7=Error
+                        if state == 6:  # Ended
+                            self.logger.info(f"Video completed: {video.name}")
+                            break
+                        elif state == 7:  # Error
+                            self.logger.error(f"Video playback error for: {video.name}")
+                            break
+                        elif state == 5:  # Stopped
+                            self.logger.info(f"Video stopped: {video.name}")
+                            break
+                        elif state in [1, 2, 3]:  # Opening, Buffering, or Playing - continue waiting
+                            if time.time() - video_start_time > max_wait_time:
+                                self.logger.warning(f"Video taking too long to complete: {video.name}")
+                                break
+                            time.sleep(1)
+                        else:
+                            # Unknown state, check periodically
+                            time.sleep(1)
 
                 elif not video:
                     self.logger.warning("No videos available in playlist")

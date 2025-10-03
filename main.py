@@ -2,8 +2,10 @@
 
 import logging
 import os
+import platform
 import signal
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -208,9 +210,15 @@ def main():
         # Start the application
         app.start()
 
-        # Keep main thread alive
+        # Keep main thread alive (cross-platform)
         while True:
-            signal.pause()
+            if platform.system() == "Windows":
+                # On Windows, signal.pause() doesn't exist, so we use a simple sleep loop
+                # The signal handlers will still work to break out of this loop
+                time.sleep(1)
+            else:
+                # On Unix-like systems, use signal.pause()
+                signal.pause()
 
     except KeyboardInterrupt:
         print("\nReceived keyboard interrupt, shutting down...")

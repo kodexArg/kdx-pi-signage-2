@@ -8,6 +8,59 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+import os
+import platform
+import sys
+from pathlib import Path
+
+# Cross-platform VLC library path configuration
+def _configure_vlc_paths():
+    """Configure VLC library and plugin paths for cross-platform compatibility."""
+    current_dir = Path(__file__).parent.parent  # Project root directory
+    lib_dir = current_dir / "lib"
+
+    system = platform.system().lower()
+
+    if system == "windows":
+        # On Windows, use bundled VLC libraries
+        vlc_dll_path = lib_dir / "libvlc.dll"
+        vlc_core_dll_path = lib_dir / "libvlccore.dll"
+        vlc_plugins_path = lib_dir / "vlc-plugins"
+
+        if vlc_dll_path.exists() and vlc_core_dll_path.exists() and vlc_plugins_path.exists():
+            # Set paths for bundled VLC libraries
+            os.environ['VLC_PLUGIN_PATH'] = str(vlc_plugins_path)
+            # Add lib directory to PATH for DLL loading
+            os.environ['PATH'] = str(lib_dir) + os.pathsep + os.environ.get('PATH', '')
+        else:
+            # Fall back to system VLC installation
+            print("Warning: Bundled VLC libraries not found, falling back to system VLC")
+
+    elif system == "linux":
+        # On Linux (Raspberry Pi), try to use system VLC first
+        try:
+            # Check if VLC is available in system PATH
+            import subprocess
+            result = subprocess.run(['which', 'vlc'], capture_output=True, text=True)
+            if result.returncode == 0:
+                # System VLC is available, let it use system paths
+                return
+        except:
+            pass
+
+        # If system VLC not available, try bundled approach (for development)
+        vlc_plugins_path = lib_dir / "vlc-plugins"
+        if vlc_plugins_path.exists():
+            os.environ['VLC_PLUGIN_PATH'] = str(vlc_plugins_path)
+            os.environ['LD_LIBRARY_PATH'] = str(lib_dir) + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+
+    else:
+        # For other platforms (macOS, etc.), try system paths first
+        pass
+
+# Configure VLC paths before importing
+_configure_vlc_paths()
+
 import vlc
 
 from .core import Video

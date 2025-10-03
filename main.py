@@ -6,10 +6,11 @@ import signal
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from app.application import PlaybackService
 from app.infrastructure import GoogleDriveRepository, VLCPlayer
+from app.core import Video
 
 
 class Application:
@@ -53,12 +54,45 @@ class Application:
 
         return logger
 
+    def _get_local_videos(self, test_videos_dir: str) -> List[Video]:
+        """Get list of local videos from test_videos directory."""
+        videos = []
+        test_videos_path = Path(test_videos_dir)
+
+        if not test_videos_path.exists():
+            self.logger.warning(f"Test videos directory {test_videos_dir} does not exist")
+            return videos
+
+        # Supported video extensions
+        video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.webm'}
+
+        for video_file in test_videos_path.iterdir():
+            if video_file.is_file() and video_file.suffix.lower() in video_extensions:
+                try:
+                    stat = video_file.stat()
+                    video = Video(
+                        id=f"local_{video_file.stem}",
+                        name=video_file.name,
+                        path=video_file,
+                        size=stat.st_size,
+                        modified_time=datetime.fromtimestamp(stat.st_mtime),
+                        checksum=f"local_{hash(video_file.name)}"  # Simple checksum for local files
+                    )
+                    videos.append(video)
+                except Exception as e:
+                    self.logger.warning(f"Error processing local video {video_file}: {e}")
+
+        self.logger.info(f"Found {len(videos)} local videos in {test_videos_dir}")
+        return videos
+
     def _load_configuration(self) -> dict:
-        """Load configuration from environment variables."""
+        """Load configuration from environment variables provided by uv."""
         return {
             "google_drive_folder_id": os.getenv("GOOGLE_DRIVE_FOLDER_ID", ""),
             "google_credentials_path": os.getenv("GOOGLE_APPLICATION_CREDENTIALS", ""),
-            "videos_dir": os.getenv("VIDEOS_DIR", "videos"),  # Main Google Drive sync folder
+            "google_drive_sync_enabled": os.getenv("GOOGLE_DRIVE_SYNC_ENABLED", "false").lower() == "true",
+            "videos_dir": os.getenv("VIDEOS_DIR", "videos"),
+            "test_videos_dir": os.getenv("TEST_VIDEOS_DIR", "test_videos"),
             "cache_dir": os.getenv("CACHE_DIR", "cache"),
             "logs_dir": os.getenv("LOGS_DIR", "logs"),
             "sync_interval": int(os.getenv("SYNC_INTERVAL", "30")),
@@ -67,20 +101,49 @@ class Application:
 
     def _create_dependencies(self, config: dict):
         """Create and wire dependencies using dependency injection."""
-        # Create infrastructure services
-        google_drive_repo = GoogleDriveRepository(
-            folder_id=config["google_drive_folder_id"],
-            credentials_path=config["google_credentials_path"],
-            videos_dir=config["videos_dir"]  # Main Google Drive sync folder
-        )
-
         vlc_player = VLCPlayer()
+
+        # Choose video repository based on sync configuration
+        if config["google_drive_sync_enabled"]:
+            # Use Google Drive repository for sync
+            if not config["google_drive_folder_id"]:
+                raise ValueError("GOOGLE_DRIVE_FOLDER_ID environment variable is required when GOOGLE_DRIVE_SYNC_ENABLED=true")
+            if not config["google_credentials_path"]:
+                raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is required when GOOGLE_DRIVE_SYNC_ENABLED=true")
+
+            video_repository = GoogleDriveRepository(
+                folder_id=config["google_drive_folder_id"],
+                credentials_path=config["google_credentials_path"],
+                videos_dir=config["videos_dir"]
+            )
+
+            videos_dir = config.get("videos_dir", "videos")
+            self.logger.info("Using Google Drive synchronization")
+        else:
+            # Use local test videos without sync
+            local_videos = self._get_local_videos(config["test_videos_dir"])
+
+            # Create a simple repository that returns local videos
+            class LocalVideoRepository:
+                def __init__(self, videos):
+                    self.videos = videos
+
+                def get_videos(self):
+                    return self.videos
+
+                def sync_videos(self):
+                    # No sync needed for local videos
+                    pass
+
+            video_repository = LocalVideoRepository(local_videos)
+            videos_dir = config["test_videos_dir"]
+            self.logger.info(f"Using local videos from {config['test_videos_dir']} (Google Drive sync disabled)")
 
         # Create application service
         self.playback_service = PlaybackService(
-            video_repository=google_drive_repo,
+            video_repository=video_repository,
             video_player=vlc_player,
-            videos_dir=config.get("videos_dir", "videos"),  # Main Google Drive sync folder
+            videos_dir=videos_dir,
             cache_dir=config["cache_dir"],
             sync_interval=config["sync_interval"]
         )
@@ -93,11 +156,12 @@ class Application:
             # Load configuration
             config = self._load_configuration()
 
-            # Validate required configuration
-            if not config["google_drive_folder_id"]:
-                raise ValueError("GOOGLE_DRIVE_FOLDER_ID environment variable is required")
-            if not config["google_credentials_path"]:
-                raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is required")
+            # Validate required configuration based on sync mode
+            if config["google_drive_sync_enabled"]:
+                if not config["google_drive_folder_id"]:
+                    raise ValueError("GOOGLE_DRIVE_FOLDER_ID environment variable is required when GOOGLE_DRIVE_SYNC_ENABLED=true")
+                if not config["google_credentials_path"]:
+                    raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is required when GOOGLE_DRIVE_SYNC_ENABLED=true")
 
             # Create dependencies
             self._create_dependencies(config)

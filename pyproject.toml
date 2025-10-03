@@ -15,22 +15,16 @@ dependencies = [
     "google-auth-oauthlib>=1.0.0",
     "google-auth-httplib2>=0.1.0",
     "pydantic>=2.0.0",
-    "python-dotenv>=1.0.0",
     "aiofiles>=23.0.0",
     "pydantic-settings>=2.0.0",
-    "tenacity>=8.0.0",  # For retry logic
+    "tenacity>=8.0.0", # For retry logic
 ]
 
 [project.optional-dependencies]
 youtube = [
     "yt-dlp>=2023.0.0",
 ]
-
-[project.scripts]
-kdx-pi-signage = "main:main"
-
-[tool.uv]
-dev-dependencies = [
+dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
@@ -39,32 +33,23 @@ dev-dependencies = [
     "ruff>=0.1.0",
 ]
 
-[tool.uv.sources]
-python-vlc = { platform = "linux", url = "https://github.com/oaubert/python-vlc/releases/download/3.0.20123/python_vlc-3.0.20123-py3-none-any.whl" }
+[project.scripts]
+kdx-pi-signage = "kdx_pi_signage_2.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kdx_pi_signage_2"]
 
 [tool.kdx_pi_signage]
-# Sync configuration
-sync_interval = 30  # seconds
-max_retries = 3
-timeout = 10  # seconds
-
-# Playback configuration
-video_check_interval = 5  # seconds
-max_video_duration = 3600  # seconds
-
-# Logging configuration
-log_level = "INFO"
-log_max_file_size = "10MB"
-log_backup_count = 7
-
-# Cache configuration
-cache_dir = "cache"
-max_cache_size = "50GB"
-cleanup_threshold = "80%"
-
-# Google Drive configuration
-chunk_size = "10MB"
-concurrent_downloads = 2
+# Environment variables that uv will provide to the application
+GOOGLE_DRIVE_FOLDER_ID = "your_google_drive_folder_id_here"
+GOOGLE_APPLICATION_CREDENTIALS = "path/to/your/service-account-credentials.json"
+GOOGLE_DRIVE_SYNC_ENABLED = "false"
+VIDEOS_DIR = "videos"
+TEST_VIDEOS_DIR = "test_videos"
+CACHE_DIR = "cache"
+LOGS_DIR = "logs"
+SYNC_INTERVAL = "30"
+VLC_VERBOSE_LEVEL = "0"
 
 [build-system]
 requires = ["hatchling"]

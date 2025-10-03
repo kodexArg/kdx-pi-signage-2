@@ -106,7 +106,7 @@ class Application:
             "google_credentials_path": os.getenv("GOOGLE_APPLICATION_CREDENTIALS", ""),
             "google_drive_sync_enabled": os.getenv("GOOGLE_DRIVE_SYNC_ENABLED", "false").lower() == "true",
             "videos_dir": os.getenv("VIDEOS_DIR", "videos"),
-            "test_videos_dir": os.getenv("TEST_VIDEOS_DIR", "test_videos"),
+            "test_videos_dir": os.getenv("TEST_VIDEOS_DIR", "videos"),
             "cache_dir": os.getenv("CACHE_DIR", "cache"),
             "logs_dir": os.getenv("LOGS_DIR", "logs"),
             "sync_interval": int(os.getenv("SYNC_INTERVAL", "30")),

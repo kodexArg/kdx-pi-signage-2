@@ -53,11 +53,26 @@ def _get_vlc_paths():
             "/usr/bin/vlc",                   # Raspberry Pi / standard binary location
         ]
 
+        # Also check for plugins in common locations
+        plugins_paths = [
+            "/usr/lib/x86_64-linux-gnu/vlc/plugins",  # Ubuntu/Debian standard
+            "/usr/lib/vlc/plugins",                   # Alternative path
+            "/usr/local/lib/vlc/plugins",             # Local installation
+            "/usr/share/vlc/plugins",                 # Common plugins location
+        ]
+
         for path in common_paths:
             if os.path.exists(path):
+                # Find the best plugins directory for this VLC installation
+                plugins_dir = None
+                for plugin_path in plugins_paths:
+                    if os.path.exists(plugin_path):
+                        plugins_dir = plugin_path
+                        break
+
                 return {
                     'base_dir': path,
-                    'plugins_dir': os.path.join(path, 'plugins'),
+                    'plugins_dir': plugins_dir or os.path.join(path, 'plugins'),
                     'source': 'linux_default'
                 }
 

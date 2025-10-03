@@ -1,0 +1,90 @@
+# Cache directories (ignore contents, but keep directory structure)
+cache/*
+!cache/.gitkeep
+cache/*/
+!cache/videos/
+!cache/metadata/
+!cache/temp/
+
+# Log directories (ignore contents, but keep directory structure)
+logs/*
+!logs/.gitkeep
+logs/*/
+
+# Video directories (ignore contents, but keep directory structure)
+# videos/ is the main Google Drive synchronization folder
+videos/*
+!videos/.gitkeep
+
+# test_videos/ is for testing video playback functionality
+test_videos/*
+!test_videos/.gitkeep
+
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# VLC temporary files
+vlc-*.log
+
+# Google Drive credentials (if not using example)
+# credentials.json
+
+# Test coverage
+.coverage
+.pytest_cache/
+.tox/

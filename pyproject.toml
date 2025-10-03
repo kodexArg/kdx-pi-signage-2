@@ -1,0 +1,71 @@
+[project]
+name = "kdx-pi-signage-2"
+version = "0.1.0"
+description = "Multiplatform video signage system for Raspberry Pi"
+authors = [
+    {name = "KDX Team"},
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+dependencies = [
+    "python-vlc>=3.0.0",
+    "google-api-python-client>=2.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-auth-httplib2>=0.1.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "aiofiles>=23.0.0",
+    "pydantic-settings>=2.0.0",
+    "tenacity>=8.0.0",  # For retry logic
+]
+
+[project.optional-dependencies]
+youtube = [
+    "yt-dlp>=2023.0.0",
+]
+
+[project.scripts]
+kdx-pi-signage = "main:main"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+]
+
+[tool.uv.sources]
+python-vlc = { platform = "linux", url = "https://github.com/oaubert/python-vlc/releases/download/3.0.20123/python_vlc-3.0.20123-py3-none-any.whl" }
+
+[tool.kdx_pi_signage]
+# Sync configuration
+sync_interval = 30  # seconds
+max_retries = 3
+timeout = 10  # seconds
+
+# Playback configuration
+video_check_interval = 5  # seconds
+max_video_duration = 3600  # seconds
+
+# Logging configuration
+log_level = "INFO"
+log_max_file_size = "10MB"
+log_backup_count = 7
+
+# Cache configuration
+cache_dir = "cache"
+max_cache_size = "50GB"
+cleanup_threshold = "80%"
+
+# Google Drive configuration
+chunk_size = "10MB"
+concurrent_downloads = 2
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

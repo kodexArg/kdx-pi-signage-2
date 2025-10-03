@@ -50,6 +50,7 @@ def _get_vlc_paths():
             "/usr/lib/x86_64-linux-gnu/vlc",  # Ubuntu/Debian standard
             "/usr/lib/vlc",                   # Alternative path
             "/usr/local/lib/vlc",             # Local installation
+            "/usr/bin/vlc",                   # Raspberry Pi / standard binary location
         ]
 
         for path in common_paths:

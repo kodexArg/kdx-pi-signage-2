@@ -61,6 +61,9 @@ class Application:
         videos = []
         test_videos_path = Path(test_videos_dir)
 
+        self.logger.info(f"Current working directory: {Path.cwd().absolute()}")
+        self.logger.info(f"Looking for videos in: {test_videos_path.absolute()}")
+
         if not test_videos_path.exists():
             self.logger.warning(f"Test videos directory {test_videos_dir} does not exist")
             return videos
@@ -68,7 +71,13 @@ class Application:
         # Supported video extensions
         video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.webm'}
 
-        for video_file in test_videos_path.iterdir():
+        # Debug: List all files in directory
+        all_files = list(test_videos_path.iterdir())
+        self.logger.info(f"Found {len(all_files)} files/directories in {test_videos_dir}")
+
+        for video_file in all_files:
+            self.logger.info(f"Processing file: {video_file.name} (is_file: {video_file.is_file()}, suffix: '{video_file.suffix.lower()}')")
+
             if video_file.is_file() and video_file.suffix.lower() in video_extensions:
                 try:
                     stat = video_file.stat()
@@ -78,11 +87,14 @@ class Application:
                         path=video_file,
                         size=stat.st_size,
                         modified_time=datetime.fromtimestamp(stat.st_mtime),
-                        checksum=f"local_{hash(video_file.name)}"  # Simple checksum for local files
+                        checksum=f"local_{hash(str(video_file.name))}"  # Simple checksum for local files
                     )
                     videos.append(video)
+                    self.logger.info(f"Added video: {video_file.name}")
                 except Exception as e:
                     self.logger.warning(f"Error processing local video {video_file}: {e}")
+            else:
+                self.logger.info(f"Skipped file: {video_file.name} (not a video file)")
 
         self.logger.info(f"Found {len(videos)} local videos in {test_videos_dir}")
         return videos
